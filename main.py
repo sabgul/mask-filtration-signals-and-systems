@@ -124,6 +124,17 @@ def dft_log_transformation(frames):
     return dft_frames, to_plot
 
 
+# 5: plots spectogram for mask-on / mask-off
+def plot_spectogram(to_plot, label):
+    plt.figure(figsize=(9, 3))
+    plt.imshow(to_plot.T, extent=[0, 1, 0, 8000], aspect='auto', origin='lower')
+    plt.gca().set_xlabel('time')
+    plt.gca().set_ylabel('frequency')
+    plt.gca().set_title(label)
+    plt.colorbar()
+    plt.show()
+
+
 if __name__ == "__main__":
 
     # ---------------------------------------------------------------------------
@@ -190,7 +201,7 @@ if __name__ == "__main__":
         # creation of f_0 for mask-on tone
         f0_maskon.append(lag_convert(lag))
 
-    # 4b protocol - mean, variance
+    # 4b data for protocol - mean, variance
     maskoff_mean = np.mean(f0_maskoff)
     maskoff_var = np.var(f0_maskoff)
 
@@ -237,18 +248,7 @@ if __name__ == "__main__":
 
     # na kazdy ramec aplikujem dft a log
     # dft_maskoff = 10*np.log10(np.square(np.abs(np.fft.fft(maskoff_frames, 1024))) + 1e-20)
-    # np_off_apres_dft = np.array(dft_maskoff)
-    #
-    # plt.figure(figsize=(9, 3))
-    # plt.imshow(np_off_apres_dft.T, extent=[0, 1, 0, 8000], aspect='auto', origin='lower')
-    # plt.gca().set_xlabel('time')
-    # plt.gca().set_ylabel('frequency')
-    # plt.gca().set_title('mask-off spectogram')
-    # plt.colorbar()
-    # # cbar = plt.colorbar()
-    # plt.show()
-    # print(len(np_maskoff_frames))
-    # print(len(np_maskoff_frames[2]))
+
     np_maskon_frames = np.array(maskon_frames)
     dft_maskon, maskon_spec_plot = dft_log_transformation(np_maskon_frames)
 
@@ -259,80 +259,8 @@ if __name__ == "__main__":
     # TASK 5 - output - spectogram
     # ---------------------------------------------------------------------------
 
-    plt.figure(figsize=(9, 3))
-    plt.imshow(maskoff_spec_plot.T, extent=[0, 1, 0, 8000], aspect='auto', origin='lower')
-    plt.gca().set_xlabel('time')
-    plt.gca().set_ylabel('frequency')
-    plt.gca().set_title('mask-off spectogram')
-    plt.colorbar()
-    plt.show()
-
-
-
-
-
-
-
-    # plt.imshow(np.array(10*np.log10(np.square(np.abs([np.fft.fft(x, n=1024) for x in np_maskoff_frames])))).T, extent=[0, 1, 0, 8000], aspect='auto', origin='lower')
-    # plt.colorbar()
-    # plt.show()
-
-    # calculates dft for each frame
-    #plt.imshow(np.array([np.fft.fft(x, n=1024) for x in maskoff_frames_1]))
-
-    #--------- THIS WORKED BUT I HAVE CHANGED MY MIND
-    # for i in range(0, len(maskoff_frames)):
-    #     dft_maskoff.append(np.fft.fft(maskoff_frames[i], 1024))
-    #     dft_maskon.append(np.fft.fft(maskon_frames[i], 1024))
-    #
-    # temp_dft = np.array(dft_maskoff)
-    # temp_dft_on = np.array(dft_maskon)
-    #
-    # rows, cols = (len(maskoff_frames), 512)
-    # log_dft_maskoff = [[0.0] * cols] * rows
-    # log_dft_maskon = [[0.0] * cols] * rows
-    #
-    # temp_log = np.array(log_dft_maskoff)
-    # temp_log_on = np.array(log_dft_maskon)
-
-
-    # for i in range(0, len(maskoff_frames)):
-    #     for j in range(0, 512):
-    #         temp = abs(temp_dft[i][j])
-    #         temp = temp ** 2
-    #         temp = math.log((temp + 1e-20), 10)
-    #         temp = temp * 10
-    #         # if temp < -100:
-    #         #     temp = 20
-    #         temp_log[i][j] = temp
-    #
-    # for i in range(0, len(maskon_frames)):
-    #     for j in range(0, 512):
-    #         temp = abs(temp_dft_on[i][j])
-    #         temp = temp ** 2
-    #         temp = math.log((temp + 1e-20), 10)
-    #         temp = temp * 10
-    #         # if temp < -100:
-    #         #     temp = 20
-    #         temp_log_on[i][j] = temp
-    # --------- END OF THIS WORKED BUT I HAVE CHANGED MY MIND
-
-            # log_dft_maskoff[i][j] = 10.0 * math.log(((abs(dft_maskoff[i][j]) ** 2) +1e-20), 10)
-
-    # --- PLOTS SPECTOGRAM
-
-    #to_plot = np.array(log_dft_maskoff)
-    # plt.imshow(to_plot.T, extent=[0, 1, 0, 8000], aspect='auto', origin='lower')
-
-
-    # plt.figure(figsize=(9, 3))
-    # plt.imshow(temp_log.T, extent=[0, 1, 0, 8000], aspect='auto', origin='lower')
-    # plt.gca().set_xlabel('time')
-    # plt.gca().set_ylabel('frequency')
-    # plt.gca().set_title('mask-off spectogram')
-    # plt.colorbar()
-    # # cbar = plt.colorbar()
-    # plt.show()
+    plot_spectogram(maskon_spec_plot, 'mask-on spectogram')
+    plot_spectogram(maskoff_spec_plot, 'mask-off spectogram')
 
     # data z maskon_frames prezeniem dft, aplikujem vzorec s logaritmom a nasledne vykreslim spektogram
     # dft sa robi nad ustrednenym a normalizovanym signalom
@@ -342,48 +270,43 @@ if __name__ == "__main__":
     # 5b implement own function for DFT and compare it with FFT
 
     # ---------------------------------------------------------------------------
-    # TASK 6 -
+    # TASK 6 - frequence characteristics
     # ---------------------------------------------------------------------------
-    # frekvencnu charakteristiku ziskame pre kazdy ramec
-    # podiel vystupu pre nahravku s ruskou a bez maskon / maskoff
 
-    # tralala = np.array(maskon_frames)
-    # trololo = np.array(maskoff_frames)
-    # dft_on, zbytocne = dft_log_transformation(tralala)
-    # dft_off, zbyt = dft_log_transformation(trololo)
-    #
-    # f_char = []
-    # for i in range(0, len(dft_maskon)):
-    #     f_char.append(dft_on[i] / dft_off[i])
-    #
-    # freq_char = np.array(f_char)
-    # #
-    #
-    # absolute_f_ch = abs(freq_char)
-    # # # spriemerujeme ju cez kazdy ramec, aby sme ziskali jednu -> priemerujeme len absolutne hodnoty
-    # avg_freq_char = []
-    # #
-    # for i in range(0, len(freq_char)):
-    #     avg_freq_char.append(np.average(absolute_f_ch[i]))
-    # freq_char = np.array(avg_freq_char)
-    #
-    # plt.plot(freq_char)
-    # plt.xlabel('freq chars')
-    # plt.show()
+    moff_frames = np.array(maskoff_frames)
+    mon_frames = np.array(maskon_frames)
 
+    dividend = np.array(dft_maskoff / dft_maskon)
+    dividend = np.abs(dividend)
 
+    dividend = dividend.T
 
-    # plt.plot(freq_char)
-    # plt.xlabel('average freq char')
-    # plt.show()
-    # vykreslit frekvencnu charakteristiku ako vykonove spektrum
+    means = []
+    for i in range(0, 512):
+        means.append(np.array(np.average(dividend[i])))
+
+    fchar = np.array(means)
+    freq_char = np.array(10*np.log10(np.square(np.abs(fchar))))
+
+    plt.plot(freq_char)
+    plt.xlabel('123')
+    plt.show()
+
+    #tr = np.arange(ramce1[index1].size) / fs
+    #tr je osa x -> namiesto vzoriek mi tam da cas
+
+    # deleni -> abs -> mean -> log
+    # dleeni -> abs -> mena -> log z dalsi abs
 
     # ---------------------------------------------------------------------------
     # TASK 7 - filtration
     # ---------------------------------------------------------------------------
-    # frekvencnu charakteristiku prevedieme na impulznu odozvu pomocou idft
+    # frequence characteristics is transformed to impulse response via IDFT
+    impulse_response = np.array(np.fft.ifft(freq_char))
 
+    plt.plot(impulse_response)
+    plt.xlabel('impulse response')
+    plt.show()
     # ---------------------------------------------------------------------------
     # TASK 8 - mask simulation
     # ---------------------------------------------------------------------------
-
