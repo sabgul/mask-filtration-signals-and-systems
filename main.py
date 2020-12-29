@@ -7,8 +7,10 @@ import math
 import statistics as stat
 from statsmodels.graphics.tsaplots import plot_acf
 
-# TODO: RECORD MASKOFF TONE AGAIN
 
+# plt.plot(temp_fr)
+# plt.xlabel('CLIP')
+# plt.show()
 
 # 3: Extracts one second from maskoff_tone
 def get_one_sec_maskoff():  #maskoff_tone.wav
@@ -62,6 +64,7 @@ def get_frames(tone, samplerate):
     return frames
 
 
+# 4a: center clipping of individual frame
 def center_clipping(frame):
     # compute max of absolute value
     maximum = max(frame.min(), frame.max(), key=abs)
@@ -73,8 +76,6 @@ def center_clipping(frame):
         # samples above 70% of max set to 1
         if frame[i] > thresh:
             frame[i] = 1
-            print('teraz')
-            print(i)
         # samples above 70% of -max set to -1
         elif frame[i] < (thresh * -1):
             frame[i] = -1
@@ -90,6 +91,7 @@ def center_clipping(frame):
     # plt.show()
 
 
+# 4b: auto-correlation
 def autocorrelation(tone):
     threshold = 10
     frame = np.asarray(tone)
@@ -101,31 +103,31 @@ def autocorrelation(tone):
     x = np.arange(len(frame))
     autocorrelated = list(map(r, x))
 
-    # ---- PLOTS AUTOCORRELATED FRAME
-    # plt.axvline(x=10, color='black', label="Threshold")
-    # # threshold at 10th sample
-    # x = []
-    # y = []
-    # x.append((np.argmax(autocorrelated[10:]) + 10))
-    # y.append(int(np.max(autocorrelated[10:])))
-    # print(x, y)
-    # plt.stem(x, y, linefmt='red', label="Lag")
-    # plt.show()
-
     lag_index = (np.argmax(autocorrelated[threshold:]) + threshold)
     return autocorrelated, lag_index
 
 
+# 4c: conversion of 'lag' to frequency
 def lag_convert(lag):
     f_s = 16000
     converted = f_s / lag
     return converted
 
 
+# 5: calculates dft and transforms it into form necessary for plotting of spectogram
+def dft_log_transformation(frames):
+    dft_frames = np.array(np.fft.fft(frames, 1024))
+    log_frames = np.array(10*np.log10(np.square(np.abs([np.fft.fft(x, n=1024) for x in frames]))))
+
+    to_plot = log_frames[0:99, 0:512]
+
+    return dft_frames, to_plot
+
+
 if __name__ == "__main__":
 
     # ---------------------------------------------------------------------------
-    # TASK 3
+    # TASK 3 - preparation of data
     # ---------------------------------------------------------------------------
 
     # gets chunk of one sec from tone
@@ -136,7 +138,6 @@ if __name__ == "__main__":
     samplerate_maskoff_tone, maskoff_tone = wavfile.read('./extract/maskoff_tone_extract.wav')
     samplerate_maskon_tone, maskon_tone = wavfile.read('./extract/maskon_tone_extract.wav')
 
-
     # 3a, 3b - centers and normalizes to range [-1;1]
     maskoff_tone = normalize_center(maskoff_tone)
     maskon_tone = normalize_center(maskon_tone)
@@ -144,26 +145,6 @@ if __name__ == "__main__":
     # 3: splits the tone into 20ms fragments
     maskoff_frames = get_frames(maskoff_tone, samplerate_maskoff_tone)
     maskon_frames = get_frames(maskon_tone, samplerate_maskon_tone)
-
-
-
-
-
-    # --- PLOTS
-    # fig, axs = plt.subplots(2)
-    # axs[0].plot(maskoff_frames[2])
-    # axs[0].plot(maskoff_frames[2], color = 'red')
-    # axs[0].set_title('maskoff frame []')
-    # #
-    # axs[1].plot(maskon_frames[2])
-    # axs[1].plot(maskon_frames[2], color = 'blue')
-    # axs[1].set_title('maskon frame []')
-    # #
-    # # axs[2].plot(f0_maskoff)
-    # # axs[2].plot(f0_maskon, color = 'red')
-    # plt.show()
-    # plt.savefig("random.png")
-
 
     # ---------------------------------------------------------------------------
     # TASK 4 - validity check
@@ -183,9 +164,10 @@ if __name__ == "__main__":
 
     #f0 = fs/index lagu
 
+    moff_frames_np = np.array(maskoff_frames)
     for i in range(0, len(maskoff_frames)):
         # 4a: frame after center clipping
-        frame_maskoff_clipped.append(center_clipping(maskoff_frames[i]))
+        frame_maskoff_clipped.append(center_clipping(moff_frames_np[i]))
 
         # 4b: frame auto-correlation
         maskoff_autocorrelated, lag = autocorrelation(frame_maskoff_clipped[i])
@@ -194,13 +176,11 @@ if __name__ == "__main__":
         # 4c: conversion of lag to frequency == np.argmax / fs
         # creation of f_0 for mask-off tone
         f0_maskoff.append(lag_convert(lag))
-    # plt.plot(frame_maskoff_clipped[2])
-    # plt.xlabel('CLIP')
-    # plt.show()
 
+    mon_frames_np = np.array(maskon_frames)
     for i in range(0, len(maskon_frames)):
         # 4a: frame after center clipping
-        frame_maskon_clipped.append(center_clipping(maskon_frames[i]))
+        frame_maskon_clipped.append(center_clipping(mon_frames_np[i]))
 
         # 4b: frame auto-correlation
         maskon_autocorrelated, lag = autocorrelation(frame_maskon_clipped[i])
@@ -210,57 +190,92 @@ if __name__ == "__main__":
         # creation of f_0 for mask-on tone
         f0_maskon.append(lag_convert(lag))
 
-    #
-    # temp_fr = maskoff_frames[4]
-    # temp_fr = center_clipping(temp_fr)
-    # plt.plot(temp_fr)
-    # plt.xlabel('CLIP')
-    # plt.show()
-
-    # fig, axs = plt.subplots(2)
-    # axs[0].plot(frame_maskoff_autocorr[2])
-    # axs[0].plot(frame_maskoff_autocorr[2], color = 'red')
-    # axs[0].set_title('autocorrelated maskoff frame')
-    # #
-    # axs[1].plot(frame_maskon_autocorr[2])
-    # axs[1].plot(frame_maskon_autocorr[2], color = 'blue')
-    # axs[1].set_title('autocorrelated maskon frame')
-    #
-    # axs[2].plot(f0_maskoff)
-    # axs[2].plot(f0_maskon, color = 'red')
-    # plt.show()
-
-    # 4b - mean, variance
+    # 4b protocol - mean, variance
     maskoff_mean = np.mean(f0_maskoff)
     maskoff_var = np.var(f0_maskoff)
 
     maskon_mean = np.mean(f0_maskon)
     maskon_var = np.var(f0_maskon)
 
-    print(maskoff_mean, maskoff_var)
-    print(maskon_mean, maskon_var)
+    # ---------------------------------------------------------------------------
+    # TASK 4 - output - In order to display data, uncomment whatever part necessary
+    # ---------------------------------------------------------------------------
 
-    # --- PLOTS
-    # fig, axs = plt.subplots(3)
-    # axs[0].plot(f0_maskoff)
-    # axs[0].plot(f0_maskon, color = 'red')
-    # plt.xlabel('f0')
+    # ----- PLOTS GRAPHS
+    # # this value can be arbitrarily changed
+    # plotted_frame = 2
+    # fig, axs = plt.subplots(4)
+    # axs[0].plot(maskon_frames[plotted_frame])
+    # axs[0].set_title('Frame (mask on)')
     #
-    # axs[1].plot(f0_maskoff)
-    # axs[1].plot(f0_maskon, color = 'red')
+    # axs[1].plot(frame_maskon_clipped[plotted_frame])
+    # axs[1].set_title('Center clipping (mask on)')
     #
-    # axs[2].plot(f0_maskoff)
-    # axs[2].plot(f0_maskon, color = 'red')
+    # axs[2].plot(frame_maskon_autocorr[plotted_frame])
+    # axs[2].axvline(x=10, color='black', label="Threshold")
+    # x = []
+    # y = []
+    # x.append((np.argmax(frame_maskon_autocorr[plotted_frame][10:]) + 10))
+    # y.append(int(np.max(frame_maskon_autocorr[plotted_frame][10:])))
+    # axs[2].stem(x, y, linefmt='red', label="Lag")
+    # axs[2].set_title('Autocorrelation (mask on)')
+    #
+    # axs[3].plot(f0_maskoff)
+    # axs[3].plot(f0_maskon, color = 'red')
+    # axs[3].set_title('Base frequencies')
     # plt.show()
-    # plt.savefig("random.png")
+    # ----- END OF PLOT
+
+    # print(maskoff_mean, maskoff_var)
+    # print(maskon_mean, maskon_var)
 
     # ---------------------------------------------------------------------------
     # TASK 5 - discrete fourier transform
     # ---------------------------------------------------------------------------
 
     # 5a calculate DFT spectrum from each frame with N = 1024
-    dft_maskoff = []
-    dft_maskon = []
+
+    # na kazdy ramec aplikujem dft a log
+    # dft_maskoff = 10*np.log10(np.square(np.abs(np.fft.fft(maskoff_frames, 1024))) + 1e-20)
+    # np_off_apres_dft = np.array(dft_maskoff)
+    #
+    # plt.figure(figsize=(9, 3))
+    # plt.imshow(np_off_apres_dft.T, extent=[0, 1, 0, 8000], aspect='auto', origin='lower')
+    # plt.gca().set_xlabel('time')
+    # plt.gca().set_ylabel('frequency')
+    # plt.gca().set_title('mask-off spectogram')
+    # plt.colorbar()
+    # # cbar = plt.colorbar()
+    # plt.show()
+    # print(len(np_maskoff_frames))
+    # print(len(np_maskoff_frames[2]))
+    np_maskon_frames = np.array(maskon_frames)
+    dft_maskon, maskon_spec_plot = dft_log_transformation(np_maskon_frames)
+
+    np_maskoff_frames = np.array(maskoff_frames)
+    dft_maskoff, maskoff_spec_plot = dft_log_transformation(np_maskoff_frames)
+
+    # ---------------------------------------------------------------------------
+    # TASK 5 - output - spectogram
+    # ---------------------------------------------------------------------------
+
+    plt.figure(figsize=(9, 3))
+    plt.imshow(maskoff_spec_plot.T, extent=[0, 1, 0, 8000], aspect='auto', origin='lower')
+    plt.gca().set_xlabel('time')
+    plt.gca().set_ylabel('frequency')
+    plt.gca().set_title('mask-off spectogram')
+    plt.colorbar()
+    plt.show()
+
+
+
+
+
+
+
+    # plt.imshow(np.array(10*np.log10(np.square(np.abs([np.fft.fft(x, n=1024) for x in np_maskoff_frames])))).T, extent=[0, 1, 0, 8000], aspect='auto', origin='lower')
+    # plt.colorbar()
+    # plt.show()
 
     # calculates dft for each frame
     #plt.imshow(np.array([np.fft.fft(x, n=1024) for x in maskoff_frames_1]))
@@ -331,23 +346,30 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------------
     # frekvencnu charakteristiku ziskame pre kazdy ramec
     # podiel vystupu pre nahravku s ruskou a bez maskon / maskoff
+
+    # tralala = np.array(maskon_frames)
+    # trololo = np.array(maskoff_frames)
+    # dft_on, zbytocne = dft_log_transformation(tralala)
+    # dft_off, zbyt = dft_log_transformation(trololo)
+    #
     # f_char = []
     # for i in range(0, len(dft_maskon)):
-    #     f_char.append(temp_dft_on[i] / temp_dft[i])
+    #     f_char.append(dft_on[i] / dft_off[i])
     #
     # freq_char = np.array(f_char)
-    # # plt.plot(freq_char)
-    # # plt.xlabel('freq chars')
-    # # plt.show()
+    # #
     #
     # absolute_f_ch = abs(freq_char)
-    # # spriemerujeme ju cez kazdy ramec, aby sme ziskali jednu -> priemerujeme len absolutne hodnoty
+    # # # spriemerujeme ju cez kazdy ramec, aby sme ziskali jednu -> priemerujeme len absolutne hodnoty
     # avg_freq_char = []
-    #
+    # #
     # for i in range(0, len(freq_char)):
     #     avg_freq_char.append(np.average(absolute_f_ch[i]))
     # freq_char = np.array(avg_freq_char)
-
+    #
+    # plt.plot(freq_char)
+    # plt.xlabel('freq chars')
+    # plt.show()
 
 
 
