@@ -137,6 +137,25 @@ def plot_spectogram(to_plot, label):
     plt.show()
 
 
+# 15: divides extracted second into frames
+def get_frames_15(tone, samplerate):
+    frames = []
+
+    # unit: ms
+    # 16000 frames / sec -> 16000 frames / 1000 ms -> 16 frames / ms
+    frames_per_s = samplerate / 1000
+    frames_per_s = int(frames_per_s)
+
+    frame_length = 25 * frames_per_s # 25ms * 16 frames (16frames / ms)
+    frame_offset = 10 * frames_per_s # prekryv
+    frame_pos = 0
+
+    while (frame_pos + frame_length) <= len(tone):
+        frames.append(tone[frame_pos:frame_pos+frame_length])
+        frame_pos += frame_offset
+
+    return frames
+
 if __name__ == "__main__":
 
     # ---------------------------------------------------------------------------
@@ -185,7 +204,7 @@ if __name__ == "__main__":
     f0_maskon = []
     f0_maskoff = []
 
-    #f0 = fs/index lagu
+    #f0 = fs/lag index
 
     moff_frames_np = np.array(maskoff_frames)
     for i in range(0, len(maskoff_frames)):
@@ -269,19 +288,15 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------------
     # TASK 5 - discrete fourier transform
     # ---------------------------------------------------------------------------
-# abs - priemer - log
-# log pouzit iba na vykreslenie
     # 5a calculate DFT spectrum from each frame with N = 1024
-
-    # na kazdy ramec aplikujem dft a log
-    # dft_maskoff = 10*np.log10(np.square(np.abs(np.fft.fft(maskoff_frames, 1024))) + 1e-20)
-
     np_maskon_frames = np.array(maskon_frames)
     dft_maskon, maskon_spec_plot = dft_log_transformation(np_maskon_frames)
 
     np_maskoff_frames = np.array(maskoff_frames)
     dft_maskoff, maskoff_spec_plot = dft_log_transformation(np_maskoff_frames)
 
+    # 5b implement own function for DFT and compare it with FFT
+    # TODO: DFT
     # ---------------------------------------------------------------------------
     # TASK 5 - output - spectogram
     # ---------------------------------------------------------------------------
@@ -289,51 +304,12 @@ if __name__ == "__main__":
     #plot_spectogram(maskon_spec_plot, 'mask-on spectogram')
     #plot_spectogram(maskoff_spec_plot, 'mask-off spectogram')
 
-    # data z maskon_frames prezeniem dft, aplikujem vzorec s logaritmom a nasledne vykreslim spektogram
-    # dft sa robi nad ustrednenym a normalizovanym signalom
-    # ramce prevediem na spektogram pomocou imshow
-    # dft robim nad maskoff_frames a maskon_frames
-
-    # 5b implement own function for DFT and compare it with FFT
-
     # ---------------------------------------------------------------------------
     # TASK 6 - frequence characteristics
     # ---------------------------------------------------------------------------
-    # zevraj tu mam dat ten logaritums
-    #
-    # dft(s
-    # rouskou) / dft(bez
-    # rousky), pak
-    # zprumerujes
-    # vsechny
-    # radky
-    # vyslednyho
-    # 2
-    # d
-    # pole
-    # mezi
-    # sebou
-    # a
-    # vysledny
-    # 1
-    # d
-    # pole
-    # o
-    # 1024
-    # itemech
-    # vykreslis
-    # jo
-    # a
-    # jeste
-    # pred
-    # tim
-    # vykreslenim
-    # to
-    # mam
-    # v
-    # logaritmu
 
-    # do idft davat len 512
+    #TODO: OPACNE DELENIE
+
     moff_frames = np.array(maskoff_frames)
     mon_frames = np.array(maskon_frames)
 
@@ -341,85 +317,214 @@ if __name__ == "__main__":
     dividend = np.abs(dividend)
 
     dividend = dividend.T
-    #podla lemlaka dat do idft cele pole 1024 a potom vziat len polovicu
+
     means = []
     for i in range(0, 512):
         means.append(np.array(np.average(dividend[i])))
 
     fchar = np.array(means)
-    frequence_char = np.array(10*np.log10(np.square(np.abs(fchar))))
+    # logarithmic form is used only for plotting
+    plot_frequency_char = np.array(10*np.log10(np.square(np.abs(fchar))))
 
-    plt.plot(frequence_char)
-    plt.xlabel('Frequence characteristics')
-    plt.show()
-
-    #tr = np.arange(ramce1[index1].size) / fs
-    #tr je osa x -> namiesto vzoriek mi tam da cas
-
-    # deleni -> abs -> mean -> log
-    # dleeni -> abs -> mena -> log z dalsi abs
+    # plt.plot(plot_frequency_char)
+    # plt.xlabel('Frequency characteristics')
+    # plt.savefig('./plot/frequency_char.pdf', bbox_inches = 'tight', pad_inches = 0)
+    # plt.show()
 
     # ---------------------------------------------------------------------------
     # TASK 7 - filtration
     # ---------------------------------------------------------------------------
     # x od 0 do 8000
-    # DO IFFT LEN POLOVICU
-    # frequence characteristics is transformed to impulse response via IDFT
-    # tak spriemerujem
-    # 100
-    # rámcov = dostanem
-    # 1024
-    # hodnôt
-    # a
-    # použijem
-    # iba
-    # 0: 512
-    # a
-    # dám
-    # logaritmus
-    # a
-    # vykreslím?
-    # vysledok treba hadzat do log ci ne?
+    # frequency characteristics is transformed to impulse response via IDFT
+    # TODO: IDFT
 
-    idk = fchar[:512]
-    impulse_response = np.array(np.fft.ifft(idk, 1024))
-    noje = impulse_response[:512]
-    plt.plot(impulse_response[:512])
-    plt.xlabel('impulse response')
-    plt.show()
+    fchar_half = fchar[:512]
+    impulse_response = np.array(np.fft.ifft(fchar_half, 1024))
+    impulse_response_half = impulse_response[:512]
 
-    # impulzni = np.array(np.fft.ifft(fchar))
-    #
-    # plt.plot(impulzni)
-    # plt.xlabel('impulse response')
+    # plt.plot(impulse_response[:512])
+    # plt.xlabel('Impulse response')
+    # plt.savefig('./plot/impulse_response.pdf', bbox_inches='tight', pad_inches=0)
     # plt.show()
+
     # ---------------------------------------------------------------------------
     # TASK 8 - mask simulation
     # ---------------------------------------------------------------------------
-# simulated = (b=inverse_fft.imag, a=1, x=maskoff_sentence) ? Alebo za b dať reálnu zložku tej spätnej fft? Ta mi tam sedí ale nie som si istý
-# *simulated = signal.lfilter(...)
+
     samplerate_maskoff_sentence, maskoff_sentence = wavfile.read('../audio/maskoff_sentence.wav')
     samplerate_maskon_sentence, maskon_sentence = wavfile.read('../audio/maskon_sentence.wav')
 
-    test = scipy.signal.lfilter(b=noje.real, a = 1, x = maskoff_sentence)
-    write("simulated.wav", samplerate_maskon_tone, test)
+    sim_maskon_sent = scipy.signal.lfilter(b=impulse_response_half.real, a=1, x=maskoff_sentence)
+    sim_maskon_tone = scipy.signal.lfilter(b=impulse_response_half.real, a=1, x=maskoff_tone)
 
-    plt.plot(maskoff_sentence, label = 'maskoff')
-    plt.plot(test, label = 'Simulated')
-    #plt.plot(maskon_sentence, label = 'Real')
+    # normalizovat
+    write("sim_maskon_sentence.wav", samplerate_maskon_tone, sim_maskon_sent)
+    write("sim_maskon_tone.wav", samplerate_maskon_tone, sim_maskon_tone)
 
-    plt.legend(bbox_to_anchor=(1, 1),
-               bbox_transform=plt.gcf().transFigure)
+    # ------------------------------------------------
+    # PLOTTING
+    # #------------------------------------------------
+    # plt.plot(maskoff_sentence, label='maskoff')
+    # plt.plot(sim_maskon_sent, label='simulated mask')
+    # plt.legend(bbox_to_anchor=(1, 1),
+    #            bbox_transform=plt.gcf().transFigure)
+    # plt.savefig('./plot/maskoff_sim_maskon.pdf', bbox_inches = 'tight', pad_inches = 0)
+    # plt.show()
+    # #------------------------------------------------
+    # plt.plot(maskon_sentence, label='maskon')
+    # plt.plot(sim_maskon_sent, label='simulated mask')
+    # plt.legend(bbox_to_anchor=(1, 1),
+    #            bbox_transform=plt.gcf().transFigure)
+    # plt.savefig('./plot/maskon_sim_maskon.pdf', bbox_inches = 'tight', pad_inches = 0)
+    # plt.show()
+    # #------------------------------------------------
+    # plt.plot(maskoff_sentence, label='maskoff')
+    # plt.plot(maskon_sentence, label='maskon')
+    # plt.plot(sim_maskon_sent, label='simulated mask')
+    # plt.legend(bbox_to_anchor=(1, 1),
+    #            bbox_transform=plt.gcf().transFigure)
+    # plt.savefig('./plot/all_compared.pdf', bbox_inches = 'tight', pad_inches = 0)
+    # plt.show()
+    # #------------------------------------------------
+
+    # ---------------------------------------------------------------------------
+    # TASK 10 - overlap - add
+    # ---------------------------------------------------------------------------
+
+    # ---------------------------------------------------------------------------
+    # TASK 11 - mask simulation
+    # ---------------------------------------------------------------------------
+    # u 11 okienkove funkcie hodim na kazdy ramec pred dft
+    win_maskoff = np.array(maskoff_frames)
+    win_maskon = np.array(maskon_frames)
+    leng = len(win_maskon)
+    win_maskoff_copy = np.array(win_maskoff)
+    win_maskon_copy = np.array(win_maskon)
+    for i in range(0, leng):
+        win_maskoff[i] = np.hanning(win_maskoff_copy[i])
+        win_maskon[i] = np.hanning(win_maskon_copy[i])
+
+    win_dft_maskoff, win_maskoff_spec_plot = dft_log_transformation(win_maskoff)
+    win_dft_maskon, win_maskon_spec_plot = dft_log_transformation(win_maskon)
+
+
+    # ---------------------------------------------------------------------------
+    # TASK 12 - mask simulation
+    # ---------------------------------------------------------------------------
+    # uloha s double lagom: zmenit hodnotu clipovania z 0.7 na 0.9
+    # ak na double lag nenarazim, tak clipovanie zarovnavat len na 0 a 1
+    # skusit na maskon aj maskoff
+
+
+    # pri vlastnej dft: padding uz pred aplikovanim vzorca
+
+    # ---------------------------------------------------------------------------
+    # TASK 15 - mask simulation
+    # ---------------------------------------------------------------------------
+
+    samplerate_maskoff_t_15, maskoff_tone_15 = wavfile.read('./extract/maskoff_tone_extract.wav')
+    samplerate_maskon_t_15, maskon_tone_15 = wavfile.read('./extract/maskon_tone_extract.wav')
+
+    maskoff_tone_15 = np.array(normalize_center(maskoff_tone_15))
+    maskon_tone_15 = np.array(normalize_center(maskon_tone_15))
+
+    maskoff_frames_15 = np.array(get_frames_15(maskoff_tone, samplerate_maskoff_t_15))
+    maskon_frames_15 = np.array(get_frames_15(maskon_tone, samplerate_maskon_t_15))
+
+    # fazovy posun
+    maskoff_15_clipp = []
+    maskon_15_clipp = []
+
+    length = len(maskon_frames_15)
+
+    maskoff_frames_15_tmp = np.array(maskoff_frames_15)
+    maskon_frames_15_tmp = np.array(maskon_frames_15)
+
+
+    # creates clipped frames
+    for i in range(0, length):
+        maskoff_15_clipp.append(center_clipping(maskoff_frames_15_tmp[i]))
+
+    length2 = len(maskon_frames_15)
+    for i in range(0, length2):
+        maskon_15_clipp.append(center_clipping(maskon_frames_15_tmp[i]))
+
+    moff_15_clipp = np.array(maskoff_15_clipp)
+    mon_15_clipp = np.array(maskon_15_clipp)
+
+
+    # correlates maskoff x maskon
+    tmp_off_on_corr = []
+    for i in range(0, length):
+        tmp_off_on_corr.append(scipy.signal.correlate(moff_15_clipp[i], mon_15_clipp[i]))
+
+    # inverse correlation of maskon x maskoff
+    tmp_on_off_corr = []
+    for i in range(0, length):
+        tmp_on_off_corr.append(scipy.signal.correlate(mon_15_clipp[i], moff_15_clipp[i]))
+
+    off_on_corr = np.array(tmp_off_on_corr)
+    shift_off_on = np.argmax(off_on_corr)
+    on_off_corr = np.array(tmp_on_off_corr)
+    shift_on_off = np.argmax(on_off_corr)
+
+
+    # print(shift_off_on)
+    # print(shift_on_off)
+    if shift_on_off < shift_off_on:
+        shift = shift_on_off
+    else:
+        shift = shift_off_on
+
+    # faza nerouska, rouska vysla mensia, z nerouskoveho ramca odrezeme zaciatok a z ruskoveho koniec
+
+    lag_shift = int(np.max(off_on_corr) / 2)
+
+    #vypocitat posun vo vzorkoch a ten odcitat
+
+    curr_len = len(maskon_frames_15[3])
+
+    # currently we have 373 samples, which is equivalent to 373/16 = 23.31ms
+    # we only need 320 which is equivalent to 20ms
+
+    shifted_maskoff_tmp = []
+    shifted_maskon_tmp = []
+    for i in range(0, length):
+        shifted_maskoff_tmp.append(maskoff_frames_15[i][lag_shift:])
+        shifted_maskon_tmp.append(maskon_frames_15[i][0:curr_len-lag_shift])
+
+    shifted_maskoff_long = np.array(shifted_maskoff_tmp)
+    shifted_maskon_long = np.array(shifted_maskon_tmp)
+
+    shifted_maskon_short = []
+    shifted_maskoff_short = []
+    for i in range(0, length):
+        shifted_maskoff_short.append(np.array(shifted_maskoff_long[i][0:320]))
+        shifted_maskon_short.append(np.array(shifted_maskon_long[i][0:320]))
+
+
+    # final shifted second
+    shifted_maskoff = np.array(shifted_maskoff_short)
+    shifted_maskon = np.array(shifted_maskon_short)
+
+    plt.plot(maskoff_frames_15[3], label='maskoff')
+    plt.plot(maskon_frames_15[3], label='maskon')
+    plt.title('Frames before shift')
+    plt.xlabel('samples')
+    plt.ylabel('y')
+    plt.legend(loc="upper right")
+    plt.savefig('./plot/before_shift.pdf', bbox_inches = 'tight', pad_inches = 0)
     plt.show()
 
-    #lfilter(filtr, [1], nahravka)
-    # import soundfile as sf
-    #
-    # data, samplerate = sf.read('existing_file.wav')
-    # sf.write('new_file.flac', data, samplerate)
+    plt.plot(shifted_maskoff[3], label='maskoff')
+    plt.plot(shifted_maskon[3], label='maskon')
+    plt.title('Frames after shift')
+    plt.xlabel('samples')
+    plt.ylabel('y')
+    plt.legend(loc="upper right")
+    plt.savefig('./plot/after_shift.pdf', bbox_inches = 'tight', pad_inches = 0)
+    plt.show()
+
+    #TODO ZVYSOK
 
 
-
-
-    # uloha s double lagom: zmenit hodnotu clipovania z 0.7 na 0.9
-    # pri vlastnej dft: padding uz pred aplikovanim vzorca
