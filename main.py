@@ -126,6 +126,26 @@ def dft_log_transformation(frames):
     return dft_frames, to_plot
 
 
+# 5: own implementation of dft
+def my_dft(x_n, zero_pad):
+    #zero padding
+    curr_len = len(x_n)
+    to_pad = zero_pad - curr_len
+    np.pad(x_n, [(0, 0), (0, to_pad)], mode='constant')
+
+    N = len(x_n)
+    x_k = []
+    const = 0
+    for k in range(N):
+        for n in range(N):
+            exponent = -2j*np.pi*k*n*(1/N)
+            const += x_n[n] * np.exp(exponent)
+        x_k.append(const)
+        const = 0
+
+    return x_k
+
+
 # 5: plots spectogram for mask-on / mask-off
 def plot_spectogram(to_plot, label):
     plt.figure(figsize=(9, 5))
@@ -135,6 +155,27 @@ def plot_spectogram(to_plot, label):
     plt.gca().set_title(label)
     plt.colorbar()
     plt.show()
+
+
+# 7: own implementation of idft
+def my_idft(x_k, zero_pad):
+    # zero padding
+    curr_len = len(x_k)
+    to_pad = zero_pad - curr_len
+    np.pad(x_k, [(0, 0), (0, to_pad)], mode='constant')
+
+    N = len(x_k)
+    x_n = []
+    const = 0
+    for n in range(N):
+        for k in range(N):
+            exponent = 2j*np.pi*k*n*(1/N)
+            const += x_k[k]*np.exp(exponent)
+        const /= N
+        x_n.append(const)
+        const = 0
+
+    return x_n
 
 
 # 15: divides extracted second into frames
@@ -155,6 +196,9 @@ def get_frames_15(tone, samplerate):
         frame_pos += frame_offset
 
     return frames
+
+
+def shifted_signal():
 
 if __name__ == "__main__":
 
@@ -296,13 +340,14 @@ if __name__ == "__main__":
     dft_maskoff, maskoff_spec_plot = dft_log_transformation(np_maskoff_frames)
 
     # 5b implement own function for DFT and compare it with FFT
-    # TODO: DFT
+    # implemented in function my_own_dft(signal, padding)
+
     # ---------------------------------------------------------------------------
     # TASK 5 - output - spectogram
     # ---------------------------------------------------------------------------
 
-    #plot_spectogram(maskon_spec_plot, 'mask-on spectogram')
-    #plot_spectogram(maskoff_spec_plot, 'mask-off spectogram')
+    # plot_spectogram(maskon_spec_plot, 'mask-on spectogram')
+    # plot_spectogram(maskoff_spec_plot, 'mask-off spectogram')
 
     # ---------------------------------------------------------------------------
     # TASK 6 - frequence characteristics
@@ -323,6 +368,7 @@ if __name__ == "__main__":
         means.append(np.array(np.average(dividend[i])))
 
     fchar = np.array(means)
+
     # logarithmic form is used only for plotting
     plot_frequency_char = np.array(10*np.log10(np.square(np.abs(fchar))))
 
@@ -336,11 +382,13 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------------
     # x od 0 do 8000
     # frequency characteristics is transformed to impulse response via IDFT
-    # TODO: IDFT
 
     fchar_half = fchar[:512]
     impulse_response = np.array(np.fft.ifft(fchar_half, 1024))
     impulse_response_half = impulse_response[:512]
+
+    # 5b implement own function for IDFT
+    # implemented in function my_own_idft(signal, padding)
 
     # plt.plot(impulse_response[:512])
     # plt.xlabel('Impulse response')
@@ -357,7 +405,7 @@ if __name__ == "__main__":
     sim_maskon_sent = scipy.signal.lfilter(b=impulse_response_half.real, a=1, x=maskoff_sentence)
     sim_maskon_tone = scipy.signal.lfilter(b=impulse_response_half.real, a=1, x=maskoff_tone)
 
-    # normalizovat
+    # TODO normalizovat
     write("sim_maskon_sentence.wav", samplerate_maskon_tone, sim_maskon_sent)
     write("sim_maskon_tone.wav", samplerate_maskon_tone, sim_maskon_tone)
 
@@ -395,17 +443,19 @@ if __name__ == "__main__":
     # TASK 11 - mask simulation
     # ---------------------------------------------------------------------------
     # u 11 okienkove funkcie hodim na kazdy ramec pred dft
-    win_maskoff = np.array(maskoff_frames)
-    win_maskon = np.array(maskon_frames)
-    leng = len(win_maskon)
-    win_maskoff_copy = np.array(win_maskoff)
-    win_maskon_copy = np.array(win_maskon)
-    for i in range(0, leng):
-        win_maskoff[i] = np.hanning(win_maskoff_copy[i])
-        win_maskon[i] = np.hanning(win_maskon_copy[i])
 
-    win_dft_maskoff, win_maskoff_spec_plot = dft_log_transformation(win_maskoff)
-    win_dft_maskon, win_maskon_spec_plot = dft_log_transformation(win_maskon)
+    # TODO odkomentovat
+    # win_maskoff = np.array(maskoff_frames)
+    # win_maskon = np.array(maskon_frames)
+    # leng = len(win_maskon)
+    # win_maskoff_copy = np.array(win_maskoff)
+    # win_maskon_copy = np.array(win_maskon)
+    # for i in range(0, leng):
+    #     win_maskoff[i] = np.hanning(win_maskoff_copy[i])
+    #     win_maskon[i] = np.hanning(win_maskon_copy[i])
+    #
+    # win_dft_maskoff, win_maskoff_spec_plot = dft_log_transformation(win_maskoff)
+    # win_dft_maskon, win_maskon_spec_plot = dft_log_transformation(win_maskon)
 
 
     # ---------------------------------------------------------------------------
@@ -507,24 +557,29 @@ if __name__ == "__main__":
     shifted_maskoff = np.array(shifted_maskoff_short)
     shifted_maskon = np.array(shifted_maskon_short)
 
-    plt.plot(maskoff_frames_15[3], label='maskoff')
-    plt.plot(maskon_frames_15[3], label='maskon')
-    plt.title('Frames before shift')
-    plt.xlabel('samples')
-    plt.ylabel('y')
-    plt.legend(loc="upper right")
-    plt.savefig('./plot/before_shift.pdf', bbox_inches = 'tight', pad_inches = 0)
-    plt.show()
+    # ---------------------------------------------------------------------------
+    # TASK 15 - plots the shift
+    # ---------------------------------------------------------------------------
 
-    plt.plot(shifted_maskoff[3], label='maskoff')
-    plt.plot(shifted_maskon[3], label='maskon')
-    plt.title('Frames after shift')
-    plt.xlabel('samples')
-    plt.ylabel('y')
-    plt.legend(loc="upper right")
-    plt.savefig('./plot/after_shift.pdf', bbox_inches = 'tight', pad_inches = 0)
-    plt.show()
+    # plt.plot(maskoff_frames_15[3], label='maskoff')
+    # plt.plot(maskon_frames_15[3], label='maskon')
+    # plt.title('Frames before shift')
+    # plt.xlabel('samples')
+    # plt.ylabel('y')
+    # plt.legend(loc="upper right")
+    # plt.savefig('./plot/before_shift.pdf', bbox_inches = 'tight', pad_inches = 0)
+    # plt.show()
+    #
+    # plt.plot(shifted_maskoff[3], label='maskoff')
+    # plt.plot(shifted_maskon[3], label='maskon')
+    # plt.title('Frames after shift')
+    # plt.xlabel('samples')
+    # plt.ylabel('y')
+    # plt.legend(loc="upper right")
+    # plt.savefig('./plot/after_shift.pdf', bbox_inches = 'tight', pad_inches = 0)
+    # plt.show()
 
-    #TODO ZVYSOK
+    # TODO ZVYSOK
+    # --------- END OF CODE
 
 
