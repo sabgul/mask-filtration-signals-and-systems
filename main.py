@@ -22,7 +22,6 @@ def get_one_sec_maskoff():  #maskoff_tone.wav
     for i, chunk in enumerate(m_off_chunks):  # Manually selected chunk of 1 sec
         if i == 2:
             chunk_name = "maskoff_tone_extract.wav".format(i)
-            chunk.export(chunk_name, format="wav")
             chunk.export('./extract/' + chunk_name, format="wav")
 
 
@@ -198,7 +197,30 @@ def get_frames_15(tone, samplerate):
     return frames
 
 
-def shifted_signal():
+def calculate_shift(moff_15_clipp, mon_15_clipp):
+    # correlates maskoff x maskon
+    tmp_off_on_corr = []
+    for i in range(0, length):
+        tmp_off_on_corr.append(scipy.signal.correlate(moff_15_clipp[i], mon_15_clipp[i]))
+
+    # inverse correlation of maskon x maskoff
+    tmp_on_off_corr = []
+    for i in range(0, length):
+        tmp_on_off_corr.append(scipy.signal.correlate(mon_15_clipp[i], moff_15_clipp[i]))
+
+    off_on_corr = np.array(tmp_off_on_corr)
+    shift_off_on = np.argmax(off_on_corr)
+    on_off_corr = np.array(tmp_on_off_corr)
+    shift_on_off = np.argmax(on_off_corr)
+
+    lag_shift = int(np.max(off_on_corr) / 2)
+
+    if shift_on_off < shift_off_on:
+        shift = shift_on_off
+    else:
+        shift = shift_off_on
+
+    return shift, lag_shift
 
 if __name__ == "__main__":
 
@@ -350,7 +372,7 @@ if __name__ == "__main__":
     # plot_spectogram(maskoff_spec_plot, 'mask-off spectogram')
 
     # ---------------------------------------------------------------------------
-    # TASK 6 - frequence characteristics
+    # TASK 6 - frequency characteristics
     # ---------------------------------------------------------------------------
 
     #TODO: OPACNE DELENIE
@@ -380,14 +402,12 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------------
     # TASK 7 - filtration
     # ---------------------------------------------------------------------------
-    # x od 0 do 8000
-    # frequency characteristics is transformed to impulse response via IDFT
 
     fchar_half = fchar[:512]
     impulse_response = np.array(np.fft.ifft(fchar_half, 1024))
     impulse_response_half = impulse_response[:512]
 
-    # 5b implement own function for IDFT
+    # 7b implement own function for IDFT
     # implemented in function my_own_idft(signal, padding)
 
     # plt.plot(impulse_response[:512])
@@ -406,8 +426,8 @@ if __name__ == "__main__":
     sim_maskon_tone = scipy.signal.lfilter(b=impulse_response_half.real, a=1, x=maskoff_tone)
 
     # TODO normalizovat
-    write("sim_maskon_sentence.wav", samplerate_maskon_tone, sim_maskon_sent)
-    write("sim_maskon_tone.wav", samplerate_maskon_tone, sim_maskon_tone)
+    write("../audio/sim_maskon_sentence.wav", samplerate_maskon_tone, sim_maskon_sent)
+    write("../audio/sim_maskon_tone.wav", samplerate_maskon_tone, sim_maskon_tone)
 
     # ------------------------------------------------
     # PLOTTING
@@ -433,6 +453,7 @@ if __name__ == "__main__":
     #            bbox_transform=plt.gcf().transFigure)
     # plt.savefig('./plot/all_compared.pdf', bbox_inches = 'tight', pad_inches = 0)
     # plt.show()
+
     # #------------------------------------------------
 
     # ---------------------------------------------------------------------------
@@ -469,7 +490,7 @@ if __name__ == "__main__":
     # pri vlastnej dft: padding uz pred aplikovanim vzorca
 
     # ---------------------------------------------------------------------------
-    # TASK 15 - mask simulation
+    # TASK 15 - frames shift
     # ---------------------------------------------------------------------------
 
     samplerate_maskoff_t_15, maskoff_tone_15 = wavfile.read('./extract/maskoff_tone_extract.wav')
@@ -478,6 +499,7 @@ if __name__ == "__main__":
     maskoff_tone_15 = np.array(normalize_center(maskoff_tone_15))
     maskon_tone_15 = np.array(normalize_center(maskon_tone_15))
 
+    # splits second into 25ms long frames
     maskoff_frames_15 = np.array(get_frames_15(maskoff_tone, samplerate_maskoff_t_15))
     maskon_frames_15 = np.array(get_frames_15(maskon_tone, samplerate_maskon_t_15))
 
@@ -490,7 +512,6 @@ if __name__ == "__main__":
     maskoff_frames_15_tmp = np.array(maskoff_frames_15)
     maskon_frames_15_tmp = np.array(maskon_frames_15)
 
-
     # creates clipped frames
     for i in range(0, length):
         maskoff_15_clipp.append(center_clipping(maskoff_frames_15_tmp[i]))
@@ -502,41 +523,13 @@ if __name__ == "__main__":
     moff_15_clipp = np.array(maskoff_15_clipp)
     mon_15_clipp = np.array(maskon_15_clipp)
 
-
-    # correlates maskoff x maskon
-    tmp_off_on_corr = []
-    for i in range(0, length):
-        tmp_off_on_corr.append(scipy.signal.correlate(moff_15_clipp[i], mon_15_clipp[i]))
-
-    # inverse correlation of maskon x maskoff
-    tmp_on_off_corr = []
-    for i in range(0, length):
-        tmp_on_off_corr.append(scipy.signal.correlate(mon_15_clipp[i], moff_15_clipp[i]))
-
-    off_on_corr = np.array(tmp_off_on_corr)
-    shift_off_on = np.argmax(off_on_corr)
-    on_off_corr = np.array(tmp_on_off_corr)
-    shift_on_off = np.argmax(on_off_corr)
-
-
-    # print(shift_off_on)
-    # print(shift_on_off)
-    if shift_on_off < shift_off_on:
-        shift = shift_on_off
-    else:
-        shift = shift_off_on
-
-    # faza nerouska, rouska vysla mensia, z nerouskoveho ramca odrezeme zaciatok a z ruskoveho koniec
-
-    lag_shift = int(np.max(off_on_corr) / 2)
-
-    #vypocitat posun vo vzorkoch a ten odcitat
+    shift, lag_shift = calculate_shift(moff_15_clipp, mon_15_clipp)
 
     curr_len = len(maskon_frames_15[3])
 
     # currently we have 373 samples, which is equivalent to 373/16 = 23.31ms
     # we only need 320 which is equivalent to 20ms
-
+    # faza nerouska, rouska vysla mensia, z nerouskoveho ramca odrezeme zaciatok a z ruskoveho koniec
     shifted_maskoff_tmp = []
     shifted_maskon_tmp = []
     for i in range(0, length):
@@ -560,26 +553,64 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------------
     # TASK 15 - plots the shift
     # ---------------------------------------------------------------------------
+    # fig, axs = plt.subplots(2, 1, figsize=(18, 10))
+    # axs[0].plot(maskoff_frames[3], label='maskoff')
+    # axs[0].plot(maskon_frames[3], label='maskon')
+    # axs[0].set_xlabel('samples')
+    # axs[0].set_ylabel('y')
+    # axs[0].set_title('Frames before shift')
+    # axs[0].legend(loc="upper right")
 
-    # plt.plot(maskoff_frames_15[3], label='maskoff')
-    # plt.plot(maskon_frames_15[3], label='maskon')
-    # plt.title('Frames before shift')
-    # plt.xlabel('samples')
-    # plt.ylabel('y')
-    # plt.legend(loc="upper right")
-    # plt.savefig('./plot/before_shift.pdf', bbox_inches = 'tight', pad_inches = 0)
-    # plt.show()
-    #
-    # plt.plot(shifted_maskoff[3], label='maskoff')
-    # plt.plot(shifted_maskon[3], label='maskon')
-    # plt.title('Frames after shift')
-    # plt.xlabel('samples')
-    # plt.ylabel('y')
-    # plt.legend(loc="upper right")
-    # plt.savefig('./plot/after_shift.pdf', bbox_inches = 'tight', pad_inches = 0)
+    # axs[1].plot(shifted_maskoff[3], label='maskoff')
+    # axs[1].plot(shifted_maskon[3], label='maskon')
+    # axs[1].set_xlabel('samples')
+    # axs[1].set_ylabel('y')
+    # axs[1].set_title('Frames after shift')
+    # axs[1].legend(loc="upper right")
+
+    # plt.savefig('./plot/shift_before_after.pdf')
     # plt.show()
 
-    # TODO ZVYSOK
+    # Applying this to the rest of the process
+    # 15-5 dft
+    np_maskon_shifted = np.array(shifted_maskon)
+    dft_maskon_shifted, maskon_shifted_spec_plot = dft_log_transformation(np_maskon_shifted)
+
+    np_maskoff_shifted = np.array(shifted_maskoff)
+    dft_maskoff_shifted, maskoff_shifted_spec_plot = dft_log_transformation(np_maskoff_shifted)
+
+    # 15-6 frequence char
+    moff_shifted = np.array(shifted_maskoff)
+    mon_shifted = np.array(shifted_maskon)
+
+    dividend_shifted = np.array(dft_maskon_shifted / dft_maskoff_shifted)
+    dividend_shifted = np.abs(dividend_shifted)
+
+    dividend_shifted = dividend_shifted.T
+
+    means_sh = []
+    for i in range(0, 512):
+        means_sh.append(np.array(np.average(dividend_shifted[i])))
+
+    fchar_shifted = np.array(means_sh)
+
+    # logarithmic form is used only for plotting
+    plot_frequency_char_shifted = np.array(10*np.log10(np.square(np.abs(fchar_shifted))))
+
+    # 15-7 impulse response
+    fchar_half_shift = fchar_shifted[:512]
+    impulse_response_shifted = np.array(np.fft.ifft(fchar_half_shift, 1024))
+    impulse_response_half_shifted = impulse_response_shifted[:512]
+
+    # 15-8 mask simulation
+
+    sim_maskon_shifted_sent = scipy.signal.lfilter(b=impulse_response_half_shifted.real, a=1, x=maskoff_sentence)
+    sim_maskon_shifted_tone = scipy.signal.lfilter(b=impulse_response_half_shifted.real, a=1, x=maskoff_tone)
+
+    # TODO normalizovat
+    write("../audio/sim_maskon_sentence_phase.wav", samplerate_maskon_tone, sim_maskon_sent)
+    write("../audio/sim_maskon_tone_phase.wav", samplerate_maskon_tone, sim_maskon_tone)
+
     # --------- END OF CODE
 
 
